@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MarketSync – Copy Telegram Signals to MT5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #0F6FE8;
+    --brand-dark: #0A52B0;
+    --brand-light: #E6F1FB;
+    --accent: #00D68F;
+    --accent-dark: #009E6A;
+    --text-primary: #0A0E1A;
+    --text-secondary: #4A5568;
+    --text-muted: #8A94A6;
+    --bg-page: #F4F7FC;
+    --bg-card: #FFFFFF;
+    --bg-dark: #060B18;
+    --bg-dark2: #0D1526;
+    --border: #E2E8F0;
+    --border-dark: #1E2D4A;
+    --font: 'Sora', sans-serif;
+    --mono: 'Space Mono', monospace;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+    --radius-xl: 32px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font); color: var(--text-primary); background: var(--bg-page); overflow-x: hidden; }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5vw; height: 66px;
+  }
+  .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; color: var(--text-primary); text-decoration: none; }
+  .nav-logo-mark { width: 34px; height: 34px; background: var(--brand); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+  .nav-logo-mark svg { width: 18px; height: 18px; }
+  .nav-links { display: flex; gap: 32px; list-style: none; }
+  .nav-links a { text-decoration: none; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; transition: color .2s; }
+  .nav-links a:hover { color: var(--brand); }
+  .nav-cta { display: flex; gap: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: var(--radius-sm); font-family: var(--font); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all .2s; text-decoration: none; border: none; }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--brand); color: var(--brand); }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: var(--brand-dark); transform: translateY(-1px); }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { background: var(--accent-dark); transform: translateY(-1px); }
+  .btn-lg { padding: 14px 32px; font-size: 1rem; border-radius: var(--radius-md); }
+  .btn-xl { padding: 16px 40px; font-size: 1.05rem; border-radius: var(--radius-md); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh; padding: 120px 5vw 80px;
+    background: linear-gradient(155deg, #060B18 0%, #0D1526 45%, #0A1A3A 100%);
+    display: flex; align-items: center; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -200px; right: -100px;
+    width: 700px; height: 700px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(15,111,232,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: ''; position: absolute; bottom: -150px; left: -100px;
+    width: 500px; height: 500px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,214,143,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(15,111,232,0.15); border: 1px solid rgba(15,111,232,0.3); color: #5CAEFF; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; margin-bottom: 24px; }
+  .hero-badge-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.6; transform:scale(1.4); } }
+  .hero h1 { font-size: clamp(2.2rem, 4vw, 3.4rem); font-weight: 800; color: #fff; line-height: 1.15; margin-bottom: 20px; }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub { font-size: 1.05rem; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 36px; max-width: 480px; }
+  .hero-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .hero-note { margin-top: 18px; font-size: 0.78rem; color: rgba(255,255,255,0.35); }
+  .hero-note span { color: rgba(255,255,255,0.55); }
+
+  /* Dashboard card mock */
+  .hero-visual { position: relative; }
+  .dash-card {
+    background: #0D1526; border: 1px solid #1E2D4A; border-radius: var(--radius-lg); padding: 24px;
+    animation: floatUp 1s ease both;
+  }
+  @keyframes floatUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+  .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .dash-logo { font-size: 0.85rem; font-weight: 700; color: #5CAEFF; display: flex; align-items: center; gap: 8px; }
+  .status-live { display: flex; align-items: center; gap: 6px; background: rgba(0,214,143,0.12); border: 1px solid rgba(0,214,143,0.25); color: var(--accent); font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+  .status-live-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.5s infinite; }
+  .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .dash-stat { background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); padding: 14px 12px; }
+  .dash-stat-label { font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-bottom: 6px; }
+  .dash-stat-val { font-size: 1.1rem; font-weight: 700; color: #fff; font-family: var(--mono); }
+  .dash-stat-val.green { color: var(--accent); }
+  .dash-stat-val.red { color: #F06C6C; }
+  .dash-groups { margin-bottom: 16px; }
+  .dash-groups-title { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .dash-group-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); margin-bottom: 6px; }
+  .dash-group-row:last-child { margin-bottom: 0; }
+  .dash-group-name { font-size: 0.8rem; color: #fff; font-weight: 500; }
+  .dash-group-stat { font-size: 0.72rem; color: rgba(255,255,255,0.4); }
+  .dash-group-tag { font-size: 0.68rem; background: rgba(15,111,232,0.2); color: #5CAEFF; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .dash-trades { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); padding: 12px; }
+  .dash-trade-num { font-size: 1.5rem; font-weight: 800; color: #fff; font-family: var(--mono); }
+  .dash-trade-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); }
+  .dash-pnl { font-family: var(--mono); font-size: 1rem; font-weight: 700; color: var(--accent); }
+
+  /* floating badge */
+  .hero-float-badge {
+    position: absolute; bottom: -20px; right: -20px;
+    background: #fff; border-radius: var(--radius-md); padding: 14px 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    display: flex; align-items: center; gap: 12px;
+    animation: floatUp 1.2s ease both;
+  }
+  .float-icon { width: 38px; height: 38px; background: var(--brand-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .float-text strong { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+  .float-text span { font-size: 0.72rem; color: var(--text-muted); }
+
+  /* LOGOS */
+  .logos-strip { background: #fff; border-bottom: 1px solid var(--border); padding: 20px 5vw; }
+  .logos-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 40px; justify-content: center; flex-wrap: wrap; }
+  .logo-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+  .logo-item { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); letter-spacing: .02em; }
+
+  /* SECTION BASE */
+  section { padding: 90px 5vw; }
+  .section-inner { max-width: 1200px; margin: 0 auto; }
+  .section-label { font-size: 0.75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); margin-bottom: 14px; }
+  .section-title { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800; color: var(--text-primary); margin-bottom: 16px; line-height: 1.2; }
+  .section-sub { font-size: 1rem; color: var(--text-secondary); max-width: 560px; line-height: 1.7; }
+
+  /* HOW IT WORKS */
+  #how { background: #fff; }
+  .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 56px; }
+  .step-card { position: relative; }
+  .step-num { font-family: var(--mono); font-size: 0.7rem; font-weight: 700; color: var(--brand); background: var(--brand-light); border-radius: 999px; padding: 4px 12px; display: inline-block; margin-bottom: 18px; }
+  .step-icon { width: 52px; height: 52px; background: var(--brand-light); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .step-icon svg { width: 26px; height: 26px; }
+  .step-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; color: var(--text-primary); }
+  .step-card p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.65; }
+  .step-connector { position: absolute; top: 60px; right: -20px; width: 40px; color: var(--border); font-size: 1.5rem; }
+
+  /* FEATURES */
+  #features { background: var(--bg-page); }
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 56px; }
+  .feature-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; transition: border-color .2s, transform .2s; }
+  .feature-card:hover { border-color: var(--brand); transform: translateY(-4px); }
+  .feat-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .feat-icon.blue { background: rgba(15,111,232,0.1); }
+  .feat-icon.green { background: rgba(0,214,143,0.1); }
+  .feat-icon.purple { background: rgba(124,58,237,0.1); }
+  .feat-icon.amber { background: rgba(245,158,11,0.1); }
+  .feat-icon.red { background: rgba(240,108,108,0.1); }
+  .feat-icon.teal { background: rgba(20,184,166,0.1); }
+  .feat-icon svg { width: 22px; height: 22px; }
+  .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: var(--text-primary); }
+  .feature-card p { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.65; }
+
+  /* SIGNAL PARSING */
+  #parsing { background: #fff; }
+  .parsing-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+  .signal-demo { background: var(--bg-dark); border: 1px solid var(--border-dark); border-radius: var(--radius-lg); padding: 28px; font-family: var(--mono); }
+  .signal-demo-header { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .08em; }
+  .signal-msg { margin-bottom: 20px; }
+  .signal-raw { font-size: 0.85rem; color: rgba(255,255,255,0.85); line-height: 1.6; border-left: 3px solid var(--brand); padding-left: 14px; margin-bottom: 14px; }
+  .signal-parsed-label { font-size: 0.65rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .signal-parsed-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sig-item { background: rgba(255,255,255,0.04); border-radius: 7px; padding: 8px 10px; }
+  .sig-key { font-size: 0.62rem; color: rgba(255,255,255,0.35); display: block; margin-bottom: 3px; }
+  .sig-val { font-size: 0.82rem; color: #fff; font-weight: 700; }
+  .sig-val.buy { color: var(--accent); }
+  .sig-val.sell { color: #F06C6C; }
+  .parsing-list { list-style: none; }
+  .parsing-list li { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 20px; }
+  .parsing-list-icon { width: 32px; height: 32px; min-width: 32px; background: var(--brand-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .parsing-list-icon svg { width: 16px; height: 16px; }
+  .parsing-list h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); }
+  .parsing-list p { font-size: 0.83rem; color: var(--text-secondary); line-height: 1.5; }
+
+  /* PRICING */
+  #pricing { background: var(--bg-page); }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 56px; max-width: 900px; margin-left: auto; margin-right: auto; }
+  .pricing-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; position: relative; }
+  .pricing-card.featured { border: 2px solid var(--brand); }
+  .pricing-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--brand); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 5px 16px; border-radius: 999px; white-space: nowrap; }
+  .pricing-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; color: var(--text-secondary); }
+  .pricing-price { font-size: 2.5rem; font-weight: 800; color: var(--text-primary); font-family: var(--mono); margin: 14px 0 4px; }
+  .pricing-price span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
+  .pricing-desc { font-size: 0.83rem; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+  .pricing-list { list-style: none; margin-bottom: 28px; }
+  .pricing-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 10px; }
+  .pricing-list li::before { content: ''; width: 16px; height: 16px; min-width: 16px; border-radius: 50%; background: rgba(0,214,143,0.15); position: relative; top: 2px; }
+  .pricing-list li.no::before { background: rgba(240,108,108,0.12); }
+  .pricing-list li span.check { color: var(--accent); font-size: 0.65rem; font-weight: 900; }
+  .pricing-note { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 32px; }
+  .pricing-methods { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+  .pay-tag { font-size: 0.7rem; font-weight: 600; background: rgba(15,111,232,0.08); color: var(--brand); padding: 4px 10px; border-radius: 999px; }
+  .pay-tag.crypto { background: rgba(0,214,143,0.08); color: var(--accent-dark); }
+
+  /* TESTIMONIALS */
+  #testimonials { background: var(--bg-dark); }
+  #testimonials .section-title { color: #fff; }
+  #testimonials .section-label { color: var(--accent); }
+  #testimonials .section-sub { color: rgba(255,255,255,0.5); }
+  .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 56px; }
+  .testimonial-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); padding: 28px; }
+  .testimonial-stars { color: #F5B95C; font-size: 0.85rem; margin-bottom: 16px; }
+  .testimonial-card blockquote { font-size: 0.9rem; color: rgba(255,255,255,0.75); line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+  .testimonial-author { display: flex; align-items: center; gap: 12px; }
+  .author-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff; }
+  .author-name { font-size: 0.875rem; font-weight: 700; color: #fff; }
+  .author-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+
+  /* DATA CENTRES */
+  #infrastructure { background: #fff; }
+  .infra-map { background: var(--bg-dark); border-radius: var(--radius-lg); padding: 40px 32px; margin-top: 50px; display: flex; flex-direction: column; align-items: center; position: relative; overflow: hidden; }
+  .infra-map-title { font-size: 0.75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 30px; }
+  .infra-nodes { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .infra-node { background: rgba(15,111,232,0.15); border: 1px solid rgba(15,111,232,0.3); border-radius: var(--radius-md); padding: 14px 22px; display: flex; align-items: center; gap: 10px; }
+  .infra-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  .infra-node-name { font-size: 0.85rem; color: #fff; font-weight: 600; }
+  .infra-node-lat { font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .infra-stat-row { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; margin-top: 32px; }
+  .infra-stat { text-align: center; }
+  .infra-stat-val { font-size: 1.6rem; font-weight: 800; color: #fff; font-family: var(--mono); }
+  .infra-stat-val span { color: var(--accent); }
+  .infra-stat-label { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+  /* FAQ */
+  #faq { background: var(--bg-page); }
+  .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 50px; }
+  .faq-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; }
+  .faq-q { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
+  .faq-a { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.65; }
+
+  /* CTA */
+  #cta { background: linear-gradient(135deg, #0A1230 0%, #0D1526 100%); }
+  .cta-inner { text-align: center; max-width: 680px; margin: 0 auto; }
+  .cta-inner h2 { font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 800; color: #fff; margin-bottom: 18px; line-height: 1.2; }
+  .cta-inner p { font-size: 1rem; color: rgba(255,255,255,0.55); margin-bottom: 36px; line-height: 1.7; }
+  .cta-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+  /* FOOTER */
+  footer { background: var(--bg-dark); border-top: 1px solid var(--border-dark); padding: 60px 5vw 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 40px; margin-bottom: 48px; }
+  .footer-brand p { font-size: 0.85rem; color: rgba(255,255,255,0.4); line-height: 1.7; margin-top: 14px; max-width: 220px; }
+  .footer-col h4 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,0.5); margin-bottom: 16px; }
+  .footer-col ul { list-style: none; }
+  .footer-col li { margin-bottom: 10px; }
+  .footer-col a { font-size: 0.85rem; color: rgba(255,255,255,0.45); text-decoration: none; transition: color .2s; }
+  .footer-col a:hover { color: #fff; }
+  .footer-bottom { border-top: 1px solid var(--border-dark); padding-top: 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: gap; gap: 16px; }
+  .footer-copy { font-size: 0.8rem; color: rgba(255,255,255,0.25); }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { font-size: 0.8rem; color: rgba(255,255,255,0.3); text-decoration: none; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .hero-inner, .parsing-inner { grid-template-columns: 1fr; }
+    .steps-grid, .features-grid, .testimonials-grid { grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+    .faq-grid { grid-template-columns: 1fr; }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+    .nav-links { display: none; }
+    .hero-visual { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 12L7 7L10 10L15 4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="15" cy="4" r="2" fill="white"/>
+      </svg>
+    </div>
+    MarketSync
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="#" class="btn btn-ghost">Log in</a>
+    <a href="#" class="btn btn-primary">Start Copying →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Now supporting MT5 &amp; Telegram
+      </div>
+      <h1>Copy Telegram Signals to <span>MT5</span> in Milliseconds</h1>
+      <p class="hero-sub">MarketSync is a cloud-based trade copier. Connect your MT5 account, pick up to 5 Telegram signal groups, set your risk — every qualifying signal executes automatically. No VPS. No software.</p>
+      <div class="hero-actions">
+        <a href="#pricing" class="btn btn-accent btn-xl">Start Copying Signals</a>
+        <a href="#how" class="btn btn-ghost btn-lg">See how it works</a>
+      </div>
+      <p class="hero-note">From <span>$50/month</span> · Card or crypto · Cancel anytime</p>
+    </div>
+
+    <div class="hero-visual">
+      <div class="dash-card" style="animation-delay:.1s">
+        <div class="dash-header">
+          <div class="dash-logo">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 12L7 7L10 10L15 4" stroke="#5CAEFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="4" r="1.8" fill="#5CAEFF"/></svg>
+            MarketSync
+          </div>
+          <div class="status-live">
+            <span class="status-live-dot"></span>
+            LIVE
+          </div>
+        </div>
+        <div class="dash-stats">
+          <div class="dash-stat">
+            <div class="dash-stat-label">Balance</div>
+            <div class="dash-stat-val">$13,881</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-label">Win Rate</div>
+            <div class="dash-stat-val green">90%</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-label">Today P&L</div>
+            <div class="dash-stat-val green">+$124</div>
+          </div>
+        </div>
+        <div class="dash-groups">
+          <div class="dash-groups-title">Active Signal Groups</div>
+          <div class="dash-group-row">
+            <div>
+              <div class="dash-group-name">Synergy – Pro Trader</div>
+              <div class="dash-group-stat">7 signals today · XAUUSD, GBPJPY</div>
+            </div>
+            <div class="dash-group-tag">Active</div>
+          </div>
+          <div class="dash-group-row">
+            <div>
+              <div class="dash-group-name">Forex Kings Elite</div>
+              <div class="dash-group-stat">3 signals today · EURUSD</div>
+            </div>
+            <div class="dash-group-tag">Active</div>
+          </div>
+        </div>
+        <div class="dash-trades">
+          <div>
+            <div class="dash-trade-num">6</div>
+            <div class="dash-trade-label">Open Trades</div>
+          </div>
+          <div style="text-align:right">
+            <div class="dash-pnl">+$286.40</div>
+            <div class="dash-trade-label">Unrealised P&L</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-float-badge">
+        <div class="float-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#0F6FE8" stroke-width="2"/><path d="M8 12L11 15L16 9" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="float-text">
+          <strong>Signal Executed</strong>
+          <span>BUY XAUUSD · 0.01 lots · &lt;80ms</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOGOS -->
+<div class="logos-strip">
+  <div class="logos-inner">
+    <span class="logo-label">Works with</span>
+    <span class="logo-item">MetaTrader 5</span>
+    <span class="logo-item">Telegram</span>
+    <span class="logo-item">ICMarkets</span>
+    <span class="logo-item">Exness</span>
+    <span class="logo-item">XM</span>
+    <span class="logo-item">Pepperstone</span>
+    <span class="logo-item">FxPro</span>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-inner">
+    <div class="section-label">Simple setup</div>
+    <h2 class="section-title">Up and running in under 5 minutes</h2>
+    <p class="section-sub">No VPS. No software to install. No technical knowledge required.</p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">Step 01</div>
+        <div class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="#0F6FE8" stroke-width="2"/></svg>
+        </div>
+        <h3>Create your account</h3>
+        <p>Sign up with your email, accept the risk disclaimer, verify your account and subscribe for $50/month — payable by card or crypto.</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">Step 02</div>
+        <div class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#0F6FE8" stroke-width="2"/><path d="M8 12h8M12 8v8" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Connect your MT5 account</h3>
+        <p>Enter your broker server, MT5 login, and trading password. MarketSync connects in real time and verifies your account within seconds.</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">Step 03</div>
+        <div class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#0F6FE8" stroke-width="2"/></svg>
+        </div>
+        <h3>Subscribe to signal groups</h3>
+        <p>Browse available Telegram signal groups with live stats — win rate, signals per month, instruments traded. Subscribe to up to 5 groups and configure your lot size and risk settings per group.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-inner">
+    <div class="section-label">Platform capabilities</div>
+    <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+    <p class="section-sub">MarketSync is infrastructure — not a signal provider. You choose the signals, we execute them.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Sub-100ms execution</h3>
+        <p>Signals are parsed and orders dispatched to your MT5 account within milliseconds of the Telegram message. Cloud hosted — always on, never misses a signal.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feat-icon green">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#00D68F" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#00D68F" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Full trade lifecycle management</h3>
+        <p>Automatically handles signal updates — SL moves, break-even commands, partial closes, TP modifications, and full CLOSE ALL signals. Tracks open and closed trades in your dashboard.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feat-icon purple">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Advanced layering</h3>
+        <p>When a signal contains a price range, layering splits your entry across 2–5 orders at evenly spaced prices. Spreads risk and improves average entry. Configurable per group.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feat-icon amber">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-1.447-.894L15 9m0 8V9m0 0L9 7" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Smart symbol mapping</h3>
+        <p>Providers say "GOLD" — your broker calls it "XAUUSD" or "XAUUSDm.raw". MarketSync automatically maps signal instrument names to your broker's exact symbols on connection.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feat-icon teal">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#14B8A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Deep account analytics</h3>
+        <p>Growth charts, balance history, monthly/daily/hourly performance, symbol distribution, win rate, best/worst trades, commissions and swap — all on a single analytics dashboard.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feat-icon red">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#F06C6C" stroke-width="2"/><path d="M4.93 4.93l14.14 14.14" stroke="#F06C6C" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Safe unsubscribe logic</h3>
+        <p>When you unsubscribe from a group, your open trades keep receiving SL moves, TP updates, and close commands until they close naturally — preventing abandoned trades.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SIGNAL PARSING -->
+<section id="parsing">
+  <div class="section-inner">
+    <div class="parsing-inner">
+      <div>
+        <div class="section-label">Intelligent signal parser</div>
+        <h2 class="section-title">Understands every signal format</h2>
+        <p class="section-sub" style="margin-bottom:32px">MarketSync reads raw Telegram messages and automatically identifies the direction, entry, stop loss, and take profit — even across providers who format signals differently.</p>
+
+        <ul class="parsing-list">
+          <li>
+            <div class="parsing-list-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="#0F6FE8" stroke-width="2"/></svg>
+            </div>
+            <div>
+              <h4>New signals</h4>
+              <p>BUY/SELL with entry price, SL and up to 4 TP levels. Market orders when no price is specified.</p>
+            </div>
+          </li>
+          <li>
+            <div class="parsing-list-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div>
+              <h4>Trade updates</h4>
+              <p>MOVE SL, RISK FREE AT, CLOSE ALL — parsed from reply messages and applied to all open orders from the original signal.</p>
+            </div>
+          </li>
+          <li>
+            <div class="parsing-list-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M18 6 6 18M6 6l12 12" stroke="#0F6FE8" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div>
+              <h4>Cancellations and noise</h4>
+              <p>CANCEL commands and non-signal messages are correctly identified and ignored — no spurious trades.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="signal-demo">
+        <div class="signal-demo-header">Live signal parsing example</div>
+        <div class="signal-msg">
+          <div class="signal-raw">
+            BUY GOLD @ 3050/3045<br>
+            TP1 3065<br>
+            TP2 3080<br>
+            TP3 3095<br>
+            SL 3030
+          </div>
+          <div class="signal-parsed-label">Parsed output</div>
+          <div class="signal-parsed-grid">
+            <div class="sig-item"><span class="sig-key">Direction</span><span class="sig-val buy">BUY LIMIT</span></div>
+            <div class="sig-item"><span class="sig-key">Instrument</span><span class="sig-val">XAUUSD</span></div>
+            <div class="sig-item"><span class="sig-key">Entry range</span><span class="sig-val">3050 / 3045</span></div>
+            <div class="sig-item"><span class="sig-key">Stop Loss</span><span class="sig-val sell">3030</span></div>
+            <div class="sig-item"><span class="sig-key">TP1</span><span class="sig-val">3065</span></div>
+            <div class="sig-item"><span class="sig-key">TP2 / TP3</span><span class="sig-val">3080 / 3095</span></div>
+          </div>
+        </div>
+        <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px; font-size: 0.72rem; color: rgba(255,255,255,0.3);">
+          Layering ON → 3 orders at 3050, 3047.5, 3045 · 0.03 lots each
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="section-inner">
+    <div style="text-align:center">
+      <div class="section-label">Simple pricing</div>
+      <h2 class="section-title">One flat rate. No hidden fees.</h2>
+      <p class="section-sub" style="margin: 0 auto 12px;">No per-trade charges, no commission on profits. Just a flat monthly subscription.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <h3>Starter</h3>
+        <div class="pricing-price">$50<span>/month</span></div>
+        <p class="pricing-desc">Everything you need to start copying signals automatically.</p>
+        <ul class="pricing-list">
+          <li><span class="check">✓</span> 1 MT5 account connection</li>
+          <li><span class="check">✓</span> Up to 5 Telegram signal groups</li>
+          <li><span class="check">✓</span> Full trade lifecycle management</li>
+          <li><span class="check">✓</span> Layering &amp; advanced entry</li>
+          <li><span class="check">✓</span> Account analytics dashboard</li>
+          <li><span class="check">✓</span> Referral program (10% recurring)</li>
+        </ul>
+        <a href="#" class="btn btn-primary" style="width:100%; justify-content:center; padding:14px;">Get Started →</a>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Most popular</div>
+        <h3>Annual</h3>
+        <div class="pricing-price">$30<span>/month</span></div>
+        <p class="pricing-desc">$360 billed once per year — save 40% versus monthly. Same features, lower cost.</p>
+        <ul class="pricing-list">
+          <li><span class="check">✓</span> Everything in Starter</li>
+          <li><span class="check">✓</span> 40% discount vs monthly</li>
+          <li><span class="check">✓</span> Priority support</li>
+          <li><span class="check">✓</span> Early access to new features</li>
+        </ul>
+        <a href="#" class="btn btn-accent" style="width:100%; justify-content:center; padding:14px;">Get Annual Plan →</a>
+        <p style="text-align:center; font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Coming soon</p>
+      </div>
+
+      <div class="pricing-card">
+        <h3>Additional MT5</h3>
+        <div class="pricing-price">$20<span>/month</span></div>
+        <p class="pricing-desc">Add a second, third or more MT5 accounts under the same MarketSync subscription.</p>
+        <ul class="pricing-list">
+          <li><span class="check">✓</span> Copy to multiple MT5 accounts</li>
+          <li><span class="check">✓</span> Independent risk settings per account</li>
+          <li><span class="check">✓</span> Same groups, different lots</li>
+        </ul>
+        <a href="#" class="btn btn-ghost" style="width:100%; justify-content:center; padding:14px;">Coming soon</a>
+      </div>
+    </div>
+
+    <div class="pricing-note">Accepted payment methods</div>
+    <div class="pricing-methods">
+      <span class="pay-tag">Visa</span>
+      <span class="pay-tag">Mastercard</span>
+      <span class="pay-tag">Apple Pay</span>
+      <span class="pay-tag">Google Pay</span>
+      <span class="pay-tag crypto">SOL</span>
+      <span class="pay-tag crypto">USDC</span>
+      <span class="pay-tag crypto">USDT</span>
+      <span class="pay-tag crypto">ETH</span>
+      <span class="pay-tag crypto">BTC</span>
+    </div>
+    <p class="pricing-note" style="margin-top:16px">Payments processed by <strong>Helio</strong> · Instant crypto settlement · Global access</p>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials">
+  <div class="section-inner">
+    <div class="section-label">Community</div>
+    <h2 class="section-title">Traders trust MarketSync</h2>
+    <p class="section-sub">Used by thousands of traders copying signals across all major brokers and regions.</p>
+
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <blockquote>"I've tried three trade copiers before. MarketSync is the only one that actually handles SL moves and break-even commands without me babysitting it."</blockquote>
+        <div class="testimonial-author">
+          <div class="author-avatar">JA</div>
+          <div>
+            <div class="author-name">James A.</div>
+            <div class="author-meta">ICMarkets · UK</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <blockquote>"The layering feature is brilliant. My average entry improved significantly on range signals and I'm now risking less on each position."</blockquote>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:#00D68F">FO</div>
+          <div>
+            <div class="author-name">Funmilayo O.</div>
+            <div class="author-meta">Exness · Nigeria</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <blockquote>"Crypto payment option was a game changer for me. Setup took 4 minutes. First trade executed before I even refreshed my MT5 terminal."</blockquote>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:#7C3AED">MR</div>
+          <div>
+            <div class="author-name">Mohammed R.</div>
+            <div class="author-meta">XM · UAE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INFRASTRUCTURE -->
+<section id="infrastructure">
+  <div class="section-inner">
+    <div class="section-label">Reliability</div>
+    <h2 class="section-title">Built for speed, uptime, and global reach</h2>
+    <p class="section-sub">MarketSync's infrastructure runs 24/7 so you never miss a signal — regardless of your time zone or broker location.</p>
+
+    <div class="infra-map">
+      <div class="infra-map-title">MarketSync data centre locations</div>
+      <div class="infra-nodes">
+        <div class="infra-node">
+          <div class="infra-dot"></div>
+          <div>
+            <div class="infra-node-name">New York</div>
+            <div class="infra-node-lat">US East · Primary</div>
+          </div>
+        </div>
+        <div class="infra-node">
+          <div class="infra-dot"></div>
+          <div>
+            <div class="infra-node-name">London</div>
+            <div class="infra-node-lat">EU West</div>
+          </div>
+        </div>
+        <div class="infra-node">
+          <div class="infra-dot"></div>
+          <div>
+            <div class="infra-node-name">Singapore</div>
+            <div class="infra-node-lat">APAC</div>
+          </div>
+        </div>
+        <div class="infra-node">
+          <div class="infra-dot"></div>
+          <div>
+            <div class="infra-node-name">Frankfurt</div>
+            <div class="infra-node-lat">EU Central</div>
+          </div>
+        </div>
+        <div class="infra-node">
+          <div class="infra-dot"></div>
+          <div>
+            <div class="infra-node-name">Dubai</div>
+            <div class="infra-node-lat">MENA</div>
+          </div>
+        </div>
+      </div>
+      <div class="infra-stat-row">
+        <div class="infra-stat">
+          <div class="infra-stat-val"><span>&lt;</span>100ms</div>
+          <div class="infra-stat-label">Signal to order</div>
+        </div>
+        <div class="infra-stat">
+          <div class="infra-stat-val">99.9<span>%</span></div>
+          <div class="infra-stat-label">Platform uptime</div>
+        </div>
+        <div class="infra-stat">
+          <div class="infra-stat-val">24<span>/7</span></div>
+          <div class="infra-stat-label">Active monitoring</div>
+        </div>
+        <div class="infra-stat">
+          <div class="infra-stat-val">500<span>+</span></div>
+          <div class="infra-stat-label">Supported brokers</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="section-inner">
+    <div style="text-align:center; margin-bottom: 0;">
+      <div class="section-label">FAQ</div>
+      <h2 class="section-title">Frequently asked questions</h2>
+    </div>
+
+    <div class="faq-grid">
+      <div class="faq-item">
+        <div class="faq-q">Does MarketSync work with MT4?</div>
+        <div class="faq-a">No. MarketSync supports MetaTrader 5 (MT5) only. If your broker offers both, ensure you are using your MT5 account credentials when connecting.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Do I need to keep my PC on?</div>
+        <div class="faq-a">No. MarketSync is entirely cloud-based. Signals are monitored and orders dispatched 24/7 from our servers — your computer and MT5 terminal do not need to be open.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What happens if my payment fails?</div>
+        <div class="faq-a">You get a 3-day grace period — signal copying continues normally. After 3 days without payment, copying stops but your dashboard remains accessible in read-only mode. Open trades continue receiving SL/TP/close updates until they close naturally.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Can I use any Telegram signal group?</div>
+        <div class="faq-a">You can subscribe to any of the groups available on the MarketSync platform. These are groups that our Telegram listener accounts are already connected to. New group requests can be submitted to the team.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Is my MT5 password safe?</div>
+        <div class="faq-a">You provide your MT5 trading password (not the read-only investor password). Credentials are encrypted and transmitted securely. MarketSync uses the industry-standard TradeSync infrastructure to manage MT5 connections.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Does MarketSync provide trading signals?</div>
+        <div class="faq-a">No. MarketSync is an order routing tool — infrastructure, not advice. You connect to third-party Telegram signal providers entirely at your own discretion. We do not provide signals, analysis, or financial advice.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">How does the referral program work?</div>
+        <div class="faq-a">Every paying subscriber gets a unique referral link. When someone signs up and pays through your link, you earn 10% recurring commission (~$5/month per active referral) for as long as they stay subscribed. Payouts are handled automatically via Rewardful.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What is layering and should I use it?</div>
+        <div class="faq-a">Layering splits a range-entry signal (e.g. BUY @ 3050/3040) into 2–5 separate orders at evenly spaced prices across the range. This can improve your average entry price. It only activates on signals that include a price range — single-price signals are unaffected.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="section-inner">
+    <div class="cta-inner">
+      <h2>Ready to automate your signal copying?</h2>
+      <p>Join traders worldwide using MarketSync to execute Telegram signals on MT5 — automatically, accurately, and in milliseconds.</p>
+      <div class="cta-actions">
+        <a href="#pricing" class="btn btn-accent btn-xl">Start Copying Signals</a>
+        <a href="#faq" class="btn btn-ghost btn-lg" style="color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.2);">Read the FAQ</a>
+      </div>
+      <p style="margin-top:20px; font-size:0.78rem; color:rgba(255,255,255,0.3);">$50/month · No contract · Cancel anytime · Card or crypto accepted</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo" style="color:#fff; margin-bottom:4px; display:inline-flex;">
+          <div class="nav-logo-mark">
+            <svg viewBox="0 0 18 18" fill="none"><path d="M3 12L7 7L10 10L15 4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="4" r="2" fill="white"/></svg>
+          </div>
+          MarketSync
+        </a>
+        <p>Cloud-based Telegram to MT5 trade copier. Infrastructure for traders — not advice.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#how">How It Works</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Affiliates</a></li>
+          <li><a href="#">White-label</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Support</h4>
+        <ul>
+          <li><a href="#">Documentation</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Status</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Risk Disclaimer</a></li>
+          <li><a href="#">Cookies</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2026 MarketSync. All rights reserved. Trading involves significant risk of loss.</p>
+      <div class="footer-links">
+        <a href="#">Twitter / X</a>
+        <a href="#">Telegram</a>
+        <a href="#">YouTube</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
